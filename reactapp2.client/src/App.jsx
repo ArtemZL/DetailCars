@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
+import MyCars from './pages/MyCars';
 import './App.css';
 
 function App() {
@@ -40,7 +41,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
 
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/my-cars" element={<h2 style={{ textAlign: 'center', color: 'white' }}>Тут буде гараж твоїх авто 🚗</h2>} />
+                <Route path="/my-cars" element={<MyCars />} />
             </Routes>
         </div>
     );
