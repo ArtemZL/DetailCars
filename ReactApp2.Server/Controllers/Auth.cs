@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ReactApp2.Server.Models;
 using ReactApp2.Server.Models.DTO; 
+using Microsoft.AspNetCore.Authorization;
 
 namespace ReactApp2.Server.Controllers
 {
@@ -37,6 +38,26 @@ namespace ReactApp2.Server.Controllers
 
            
             return BadRequest(result.Errors);
+        }
+
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<IActionResult> GetProfile()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return NotFound("Користувача не знайдено.");
+            }
+
+            return Ok(new UserProfileResponse
+            {
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber
+            });
         }
     }
 }
