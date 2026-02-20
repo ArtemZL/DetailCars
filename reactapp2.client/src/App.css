@@ -14,7 +14,6 @@ h1 {
     margin-bottom: 30px;
 }
 
-/* Сітка для карток (щоб були в ряд) */
 .services-grid {
     display: flex;
     flex-wrap: wrap;
@@ -22,7 +21,6 @@ h1 {
     justify-content: center;
 }
 
-/* Картка послуги */
 .card {
     background-color: #fff;
     border: 1px solid #ddd;
@@ -49,7 +47,7 @@ h1 {
 .desc {
     color: #666;
     font-size: 0.9rem;
-    height: 60px; /* Фіксована висота для опису */
+    height: 60px; 
 }
 
 button {
