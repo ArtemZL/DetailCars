@@ -35,7 +35,7 @@ function Home() {
             alert('Будь ласка, авторизуйтесь або зареєструйтесь, щоб замовити послугу 🚗');
             navigate('/login'); 
         } else {
-            alert(`Круто! Ви обрали: ${service.name}. Скоро тут буде перехід до оформлення.`);
+            navigate('/checkout', { state: { service: service } });
         }
     };
 
