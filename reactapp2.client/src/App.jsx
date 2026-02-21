@@ -4,6 +4,7 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import MyCars from './pages/MyCars';
+import Checkout from './pages/Checkout';
 import './App.css';
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
 
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/my-cars" element={<MyCars />} />
+                <Route path="/checkout" element={<Checkout />} />
             </Routes>
         </div>
     );
