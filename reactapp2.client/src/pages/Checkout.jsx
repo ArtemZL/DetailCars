@@ -1,17 +1,22 @@
-﻿import { useState, useEffect } from 'react';
+﻿/* eslint-disable no-unused-vars */
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 function Checkout() {
     const location = useLocation();
     const navigate = useNavigate();
-
     const service = location.state?.service;
 
     const [cars, setCars] = useState([]);
     const [selectedCarId, setSelectedCarId] = useState('');
     const [comments, setComments] = useState('');
+
+    // 👇 СТАН ДЛЯ ФОТО 👇
+    const [photoFile, setPhotoFile] = useState(null);
+
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false); // Щоб кнопка не натискалась двічі
 
     useEffect(() => {
         if (!service) {
@@ -21,7 +26,6 @@ function Checkout() {
         fetchMyCars();
     }, [service, navigate]);
 
-    // Завантажуємо гараж клієнта
     const fetchMyCars = async () => {
         const token = localStorage.getItem('token');
         try {
@@ -31,10 +35,7 @@ function Checkout() {
             if (response.ok) {
                 const data = await response.json();
                 setCars(data);
-                // Якщо є машини, вибираємо першу за замовчуванням
-                if (data.length > 0) {
-                    setSelectedCarId(data[0].id);
-                }
+                if (data.length > 0) setSelectedCarId(data[0].id);
             }
         } catch (error) {
             console.error("Помилка завантаження авто");
@@ -45,15 +46,40 @@ function Checkout() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
         if (cars.length === 0) {
             setMessage('❌ Спочатку додайте авто у розділі "Мої авто"!');
             return;
         }
 
+        setIsSubmitting(true);
+        setMessage('⏳ Обробка замовлення...');
         const token = localStorage.getItem('token');
+        let uploadedPhotoUrl = null;
+
         try {
-            const response = await fetch('/api/Orders', {
+            // ЯКЩО Є ФОТО - СПОЧАТКУ ВІДПРАВЛЯЄМО ЙОГО
+            if (photoFile) {
+                const formData = new FormData();
+                formData.append('file', photoFile);
+
+                const uploadRes = await fetch('/api/Upload/image', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData // Content-Type браузер встановить автоматично для FormData!
+                });
+
+                if (uploadRes.ok) {
+                    const data = await uploadRes.json();
+                    uploadedPhotoUrl = data.url; // Отримуємо наше посилання (/uploads/...)
+                } else {
+                    setMessage('❌ Помилка завантаження фотографії.');
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
+            // 2. ВІДПРАВЛЯЄМО САМЕ ЗАМОВЛЕННЯ (з посиланням на фото або без нього)
+            const orderResponse = await fetch('/api/Orders', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -61,19 +87,22 @@ function Checkout() {
                 },
                 body: JSON.stringify({
                     userCarId: parseInt(selectedCarId),
-                    serviceIds: [service.id], // бекенд чекає масив ID послуг
-                    userComments: comments
+                    serviceIds: [service.id],
+                    userComments: comments,
+                    problemPhotoUrl: uploadedPhotoUrl // Передаємо посилання в БД
                 })
             });
 
-            if (response.ok) {
-                setMessage('✅ Замовлення успішно оформлено! Ми з вами зв\'яжемось.');
-                setTimeout(() => navigate('/profile'), 1000);
+            if (orderResponse.ok) {
+                setMessage('✅ Замовлення успішно оформлено!');
+                setTimeout(() => navigate('/orders'), 2000);
             } else {
                 setMessage('❌ Сталася помилка при оформленні.');
             }
         } catch (error) {
             setMessage('❌ Помилка з\'єднання з сервером.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -84,51 +113,42 @@ function Checkout() {
             <h1 style={{ color: 'white' }}>🛒 Оформлення замовлення</h1>
 
             <div className="card" style={{ margin: '0 auto', maxWidth: '500px', textAlign: 'left', padding: '20px' }}>
-                <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '10px' }}>Ваше замовлення</h2>
+                <h2 style={{ borderBottom: '2px solid #eee', paddingBottom: '10px' }}>{service?.name}</h2>
 
-                {/* Інформація про обрану послугу */}
-                <div style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '5px', margin: '15px 0' }}>
-                    <h3 style={{ margin: '0 0 5px 0', color: '#2c3e50' }}>{service?.name}</h3>
-                    <p style={{ margin: 0, color: '#7f8c8d' }}>Базова ціна: <strong>{service?.basePrice} грн</strong></p>
-                    <p style={{ fontSize: '12px', color: '#95a5a6', marginTop: '5px' }}>
-                        * Фінальна вартість буде залежати від класу вашого авто.
-                    </p>
-                </div>
-
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
 
                     <label style={{ fontWeight: 'bold' }}>Оберіть ваше авто:</label>
-                    {cars.length === 0 ? (
-                        <p style={{ color: '#e74c3c' }}>У вас немає доданих авто. Перейдіть в "Мої авто".</p>
-                    ) : (
-                        <select
-                            value={selectedCarId}
-                            onChange={(e) => setSelectedCarId(e.target.value)}
-                            style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
-                        >
-                            {cars.map(car => (
-                                <option key={car.id} value={car.id}>
-                                    {car.brand} {car.model} ({car.categoryName})
-                                </option>
-                            ))}
-                        </select>
-                    )}
+                    <select value={selectedCarId} onChange={(e) => setSelectedCarId(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>
+                        {cars.map(car => (
+                            <option key={car.id} value={car.id}>{car.brand} {car.model}</option>
+                        ))}
+                    </select>
 
-                    <label style={{ fontWeight: 'bold' }}>Коментар до замовлення (необов'язково):</label>
-                    <textarea
-                        placeholder="Наприклад: Плями кави на сидінні..."
-                        value={comments}
-                        onChange={(e) => setComments(e.target.value)}
-                        rows="3"
-                        style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc', resize: 'vertical' }}
-                    />
+                    <label style={{ fontWeight: 'bold' }}>Коментар:</label>
+                    <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows="3" style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
 
-                    <button type="submit" disabled={cars.length === 0} style={{ backgroundColor: '#27ae60', marginTop: '10px', opacity: cars.length === 0 ? 0.5 : 1 }}>
-                        Підтвердити замовлення
+                    {/* 👇 ПОЛЕ ДЛЯ ЗАВАНТАЖЕННЯ ФОТО 👇 */}
+                    <div style={{ backgroundColor: '#f1f2f6', padding: '15px', borderRadius: '5px', border: '1px dashed #ccc' }}>
+                        <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>
+                            📸 Фото проблеми (для ШІ-оцінки):
+                        </label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setPhotoFile(e.target.files[0])}
+                            style={{ width: '100%' }}
+                        />
+                        <p style={{ fontSize: '12px', color: '#7f8c8d', margin: '5px 0 0 0' }}>
+                            Завантажте фото брудного салону або кузова, щоб ми оцінили складність роботи.
+                        </p>
+                    </div>
+
+                    <button type="submit" disabled={isSubmitting || cars.length === 0} style={{ backgroundColor: '#27ae60', marginTop: '10px' }}>
+                        {isSubmitting ? 'Обробка...' : 'Підтвердити замовлення'}
                     </button>
                 </form>
 
-                {message && <p style={{ marginTop: '15px', fontWeight: 'bold', textAlign: 'center' }}>{message}</p>}
+                {message && <p style={{ marginTop: '15px', fontWeight: 'bold', textAlign: 'center', color: message.includes('❌') ? '#e74c3c' : '#27ae60' }}>{message}</p>}
             </div>
         </div>
     );

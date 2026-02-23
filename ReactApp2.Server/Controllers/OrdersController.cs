@@ -61,6 +61,7 @@ namespace ReactApp2.Server.Controllers
                 UserId = user.Id,
                 UserCarId = car.Id,
                 UserComments = request.UserComments,
+                ProblemPhotoUrl = request.ProblemPhotoUrl,
                 TotalPrice = totalPrice,
                 OrderServices = orderServices
             };
