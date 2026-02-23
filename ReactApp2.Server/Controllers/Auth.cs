@@ -59,5 +59,36 @@ namespace ReactApp2.Server.Controllers
                 PhoneNumber = user.PhoneNumber
             });
         }
+
+        [Authorize]
+        [HttpPut("me")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            user.FirstName = request.FirstName;
+            user.LastName = request.LastName;
+            user.PhoneNumber = request.PhoneNumber;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded) return Ok(new { message = "Профіль успішно оновлено!" });
+            return BadRequest("Помилка при оновленні профілю.");
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+
+            if (result.Succeeded) return Ok(new { message = "Пароль успішно змінено!" });
+
+            return BadRequest("Неправильний поточний пароль або новий пароль занадто простий.");
+        }
     }
 }

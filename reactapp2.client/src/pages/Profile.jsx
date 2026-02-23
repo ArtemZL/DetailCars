@@ -6,14 +6,22 @@ function Profile() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    // Стани для редагування профілю
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({ firstName: '', lastName: '', phoneNumber: '' });
+    const [profileMsg, setProfileMsg] = useState('');
+
+    // Стани для зміни пароля
+    const [isChangingPass, setIsChangingPass] = useState(false);
+    const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '' });
+    const [passMsg, setPassMsg] = useState('');
+
     useEffect(() => {
         fetchProfileData();
     }, []);
 
     const fetchProfileData = async () => {
-        // 1. Дістаємо токен з пам'яті браузера
         const token = localStorage.getItem('token');
-
         if (!token) {
             setError("Ви не авторизовані!");
             setLoading(false);
@@ -21,29 +29,82 @@ function Profile() {
         }
 
         try {
-            // 2. Робимо запит і ПРИКРІПЛЮЄМО токен у заголовки
             const response = await fetch('/api/Auth/me', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`, // Ось так ми показуємо "пропуск"
-                    'Content-Type': 'application/json'
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
-
             if (response.ok) {
                 const data = await response.json();
-                setProfile(data); // Зберігаємо отримані дані
+                setProfile(data);
+                // Одразу заповнюємо форму редагування поточними даними
+                setEditForm({ firstName: data.firstName, lastName: data.lastName, phoneNumber: data.phoneNumber });
             } else {
-                setError('Не вдалося завантажити профіль. Можливо, термін дії сесії минув.');
+                setError('Не вдалося завантажити профіль.');
             }
         } catch (err) {
-            setError('Помилка з\'єднання з сервером.');
+            setError('Помилка з\'єднання.');
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <h2 style={{ color: 'white', textAlign: 'center' }}>Завантаження профілю...</h2>;
+    // Збереження нових даних профілю
+    const handleUpdateProfile = async (e) => {
+        e.preventDefault();
+        setProfileMsg('');
+        const token = localStorage.getItem('token');
+
+        try {
+            const response = await fetch('/api/Auth/me', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(editForm)
+            });
+
+            if (response.ok) {
+                setProfileMsg('✅ Профіль успішно оновлено!');
+                setIsEditing(false);
+                fetchProfileData(); 
+            } else {
+                setProfileMsg('❌ Помилка при оновленні.');
+            }
+        } catch (err) {
+            setProfileMsg('❌ Помилка з\'єднання.');
+        }
+    };
+
+    // Зміна пароля
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        setPassMsg('');
+        const token = localStorage.getItem('token');
+
+        try {
+            const response = await fetch('/api/Auth/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(passForm)
+            });
+
+            if (response.ok) {
+                setPassMsg('✅ Пароль успішно змінено!');
+                setIsChangingPass(false);
+                setPassForm({ currentPassword: '', newPassword: '' }); 
+            } else {
+                const errData = await response.text();
+                setPassMsg(`❌ ${errData || 'Помилка зміни пароля'}`);
+            }
+        } catch (err) {
+            setPassMsg('❌ Помилка з\'єднання.');
+        }
+    };
+
+    if (loading) return <h2 style={{ color: 'white', textAlign: 'center' }}>Завантаження...</h2>;
     if (error) return <h2 style={{ color: '#e74c3c', textAlign: 'center' }}>{error}</h2>;
 
     return (
@@ -51,23 +112,63 @@ function Profile() {
             <h1 style={{ color: 'white', marginBottom: '30px' }}>👤 Мій Профіль</h1>
 
             {profile && (
-                <div className="card" style={{ margin: '0 auto', maxWidth: '400px', textAlign: 'left', padding: '30px' }}>
-                    <h2 style={{ marginBottom: '20px', borderBottom: '2px solid #eee', paddingBottom: '10px' }}>
-                        Особисті дані
-                    </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '500px', margin: '0 auto' }}>
 
-                    <p style={{ fontSize: '18px', margin: '10px 0' }}>
-                        <strong>Ім'я:</strong> {profile.firstName}
-                    </p>
-                    <p style={{ fontSize: '18px', margin: '10px 0' }}>
-                        <strong>Прізвище:</strong> {profile.lastName}
-                    </p>
-                    <p style={{ fontSize: '18px', margin: '10px 0' }}>
-                        <strong>Email:</strong> {profile.email}
-                    </p>
-                    <p style={{ fontSize: '18px', margin: '10px 0' }}>
-                        <strong>Телефон:</strong> {profile.phoneNumber}
-                    </p>
+                    {/* БЛОК 1: ОСОБИСТІ ДАНІ */}
+                    <div className="card" style={{ textAlign: 'left', padding: '30px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
+                            <h2 style={{ margin: 0 }}>Особисті дані</h2>
+                            {!isEditing && (
+                                <button onClick={() => setIsEditing(true)} style={{ backgroundColor: '#f39c12', padding: '5px 15px', fontSize: '14px' }}>✏️ Редагувати</button>
+                            )}
+                        </div>
+
+                        {isEditing ? (
+                            <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <input type="text" placeholder="Ім'я" value={editForm.firstName} onChange={e => setEditForm({ ...editForm, firstName: e.target.value })} required style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
+                                <input type="text" placeholder="Прізвище" value={editForm.lastName} onChange={e => setEditForm({ ...editForm, lastName: e.target.value })} required style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
+                                <input type="tel" placeholder="Телефон" value={editForm.phoneNumber} onChange={e => setEditForm({ ...editForm, phoneNumber: e.target.value })} required style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
+                                <p style={{ margin: 0, color: '#7f8c8d', fontSize: '14px' }}>Email: {profile.email} (не змінюється)</p>
+
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button type="submit" style={{ flex: 1, backgroundColor: '#27ae60' }}>Зберегти</button>
+                                    <button type="button" onClick={() => setIsEditing(false)} style={{ flex: 1, backgroundColor: '#95a5a6' }}>Скасувати</button>
+                                </div>
+                            </form>
+                        ) : (
+                            <div>
+                                <p style={{ fontSize: '18px', margin: '10px 0' }}><strong>Ім'я:</strong> {profile.firstName}</p>
+                                <p style={{ fontSize: '18px', margin: '10px 0' }}><strong>Прізвище:</strong> {profile.lastName}</p>
+                                <p style={{ fontSize: '18px', margin: '10px 0' }}><strong>Телефон:</strong> {profile.phoneNumber}</p>
+                                <p style={{ fontSize: '18px', margin: '10px 0' }}><strong>Email:</strong> {profile.email}</p>
+                            </div>
+                        )}
+                        {profileMsg && <p style={{ marginTop: '15px', fontWeight: 'bold', color: profileMsg.includes('✅') ? '#27ae60' : '#e74c3c' }}>{profileMsg}</p>}
+                    </div>
+
+                    {/* БЛОК 2: БЕЗПЕКА (ПАРОЛЬ) */}
+                    <div className="card" style={{ textAlign: 'left', padding: '30px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', paddingBottom: '10px', marginBottom: '20px' }}>
+                            <h2 style={{ margin: 0 }}>Безпека</h2>
+                            {!isChangingPass && (
+                                <button onClick={() => setIsChangingPass(true)} style={{ backgroundColor: '#e74c3c', padding: '5px 15px', fontSize: '14px' }}>🔑 Змінити пароль</button>
+                            )}
+                        </div>
+
+                        {isChangingPass && (
+                            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <input type="password" placeholder="Поточний пароль" value={passForm.currentPassword} onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })} required style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
+                                <input type="password" placeholder="Новий пароль" value={passForm.newPassword} onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })} required style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
+
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button type="submit" style={{ flex: 1, backgroundColor: '#e74c3c' }}>Оновити пароль</button>
+                                    <button type="button" onClick={() => setIsChangingPass(false)} style={{ flex: 1, backgroundColor: '#95a5a6' }}>Скасувати</button>
+                                </div>
+                            </form>
+                        )}
+                        {passMsg && <p style={{ marginTop: '15px', fontWeight: 'bold', color: passMsg.includes('✅') ? '#27ae60' : '#e74c3c' }}>{passMsg}</p>}
+                    </div>
+
                 </div>
             )}
         </div>
