@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Profile from './pages/Profile';
 import MyCars from './pages/MyCars';
 import Checkout from './pages/Checkout';
+import MyOrders from './pages/MyOrders';
 import './App.css';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
                 {isAuthenticated ? (
                     <>
                         <Link to="/profile" style={{ color: '#f39c12', textDecoration: 'none', fontSize: '18px', fontWeight: 'bold' }}>Профіль</Link>
+                        <Link to="/orders" style={{ color: '#3498db', textDecoration: 'none', fontSize: '18px', fontWeight: 'bold' }}>Замовлення</Link>
                         <Link to="/my-cars" style={{ color: '#34db8a', textDecoration: 'none', fontSize: '18px', fontWeight: 'bold' }}>Мої авто</Link>
                         <button onClick={handleLogout} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '8px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Вийти</button>
                     </>
@@ -44,6 +46,7 @@ function App() {
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/my-cars" element={<MyCars />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/orders" element={<MyOrders />} />
             </Routes>
         </div>
     );

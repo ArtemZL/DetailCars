@@ -8,7 +8,7 @@ using ReactApp2.Server.Models;
 
 namespace ReactApp2.Server.Controllers
 {
-    [Authorize] // Замовлення можуть робити тільки авторизовані!
+    [Authorize] 
     [Route("api/[controller]")]
     [ApiController]
     public class OrdersController : ControllerBase
@@ -69,6 +69,33 @@ namespace ReactApp2.Server.Controllers
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Замовлення успішно створено!", orderId = order.Id });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetMyOrders()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            var orders = await _context.Orders
+                .Include(o => o.UserCar) 
+                .Include(o => o.OrderServices)
+                    .ThenInclude(os => os.Service) 
+                .Where(o => o.UserId == user.Id)
+                .OrderByDescending(o => o.CreatedAt) 
+                .Select(o => new OrderResponse
+                {
+                    Id = o.Id,
+                    CarInfo = o.UserCar.Brand + " " + o.UserCar.Model,
+                    TotalPrice = o.TotalPrice,
+                    Status = o.Status.ToString(), 
+                    CreatedAt = o.CreatedAt,
+                    UserComments = o.UserComments,
+                    ServiceNames = o.OrderServices.Select(os => os.Service.Name).ToList()
+                })
+                .ToListAsync();
+
+            return Ok(orders);
         }
     }
 }
