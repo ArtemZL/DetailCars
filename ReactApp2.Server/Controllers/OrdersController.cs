@@ -8,7 +8,7 @@ using ReactApp2.Server.Models;
 
 namespace ReactApp2.Server.Controllers
 {
-    [Authorize] 
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class OrdersController : ControllerBase
@@ -16,10 +16,19 @@ namespace ReactApp2.Server.Controllers
         private readonly AppDbContext _context;
         private readonly UserManager<User> _userManager;
 
-        public OrdersController(AppDbContext context, UserManager<User> userManager)
+        private readonly GeminiVisionService _geminiService;
+        private readonly IWebHostEnvironment _env;
+
+        public OrdersController(
+            AppDbContext context,
+            UserManager<User> userManager,
+            GeminiVisionService geminiService, 
+            IWebHostEnvironment env)           
         {
             _context = context;
             _userManager = userManager;
+            _geminiService = geminiService;
+            _env = env;
         }
 
         [HttpPost]
@@ -29,12 +38,11 @@ namespace ReactApp2.Server.Controllers
             if (user == null) return Unauthorized();
 
             var car = await _context.UserCars
-                .Include(c => c.VehicleCategory) 
+                .Include(c => c.VehicleCategory)
                 .FirstOrDefaultAsync(c => c.Id == request.UserCarId && c.UserId == user.Id);
 
             if (car == null) return BadRequest("Обране авто не знайдено у вашому гаражі.");
 
-            //Знаходимо обрані послуги в базі
             var services = await _context.Services
                 .Where(s => request.ServiceIds.Contains(s.Id))
                 .ToListAsync();
@@ -52,8 +60,33 @@ namespace ReactApp2.Server.Controllers
                 orderServices.Add(new OrderService
                 {
                     ServiceId = svc.Id,
-                    Price = finalPrice 
+                    Price = finalPrice
                 });
+            }
+
+            decimal aiExtraPrice = 0;
+            AiEvaluationResult? aiResult = null;
+
+            if (!string.IsNullOrEmpty(request.ProblemPhotoUrl))
+            {
+                var webRootPath = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                var relativePath = request.ProblemPhotoUrl.TrimStart('/');
+                var physicalImagePath = Path.Combine(webRootPath, relativePath);
+
+                if (System.IO.File.Exists(physicalImagePath))
+                {
+                    try
+                    {
+                        aiResult = await _geminiService.EvaluateImageAsync(physicalImagePath, request.UserComments);
+
+                        aiExtraPrice = aiResult.EstimatedExtraPrice;
+                        totalPrice += aiExtraPrice;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Помилка ШІ: {ex.Message}");
+                    }
+                }
             }
 
             var order = new Models.Order
@@ -62,8 +95,14 @@ namespace ReactApp2.Server.Controllers
                 UserCarId = car.Id,
                 UserComments = request.UserComments,
                 ProblemPhotoUrl = request.ProblemPhotoUrl,
-                TotalPrice = totalPrice,
-                OrderServices = orderServices
+                TotalPrice = totalPrice, 
+                OrderServices = orderServices,
+
+                AiProblemType = aiResult?.ProblemType,
+                AiSeverity = aiResult?.Severity,
+                AiRecommendedAddon = aiResult?.RecommendedAddon,
+                AiExtraPrice = aiExtraPrice,
+                AiManagerExplanation = aiResult?.AiManagerExplanation
             };
 
             _context.Orders.Add(order);
@@ -79,20 +118,24 @@ namespace ReactApp2.Server.Controllers
             if (user == null) return Unauthorized();
 
             var orders = await _context.Orders
-                .Include(o => o.UserCar) 
+                .Include(o => o.UserCar)
                 .Include(o => o.OrderServices)
-                    .ThenInclude(os => os.Service) 
+                    .ThenInclude(os => os.Service)
                 .Where(o => o.UserId == user.Id)
-                .OrderByDescending(o => o.CreatedAt) 
+                .OrderByDescending(o => o.CreatedAt)
                 .Select(o => new OrderResponse
                 {
                     Id = o.Id,
                     CarInfo = o.UserCar.Brand + " " + o.UserCar.Model,
                     TotalPrice = o.TotalPrice,
-                    Status = o.Status.ToString(), 
+                    Status = o.Status.ToString(),
                     CreatedAt = o.CreatedAt,
                     UserComments = o.UserComments,
-                    ServiceNames = o.OrderServices.Select(os => os.Service.Name).ToList()
+                    ServiceNames = o.OrderServices.Select(os => os.Service.Name).ToList(),
+
+                    AiExtraPrice = o.AiExtraPrice,
+                    AiRecommendedAddon = o.AiRecommendedAddon,
+                    AiProblemType = o.AiProblemType
                 })
                 .ToListAsync();
 

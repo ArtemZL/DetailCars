@@ -81,6 +81,24 @@ function MyOrders() {
                                     </ul>
                                 </div>
 
+                                {order.aiRecommendedAddon && (
+                                    <div style={{ margin: '15px 0', padding: '15px', backgroundColor: '#f0fdf4', borderLeft: '5px solid #2ecc71', borderRadius: '5px' }}>
+                                        <p style={{ margin: '0 0 10px 0', color: '#27ae60', fontWeight: 'bold', fontSize: '16px' }}>
+                                            🤖 Рекомендація ШІ після аналізу фото:
+                                        </p>
+                                        <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                                            <strong>Знайдена проблема:</strong> {order.aiProblemType === 'Stain' ? 'Пляма' :
+                                                order.aiProblemType === 'Scratch' ? 'Подряпина' :
+                                                    order.aiProblemType === 'Dirt' ? 'Сильне забруднення' :
+                                                        order.aiProblemType}
+                                        </p>
+                                        <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                                            <strong>Рекомендована послуга:</strong> {order.aiRecommendedAddon}
+                                            <span style={{ fontWeight: 'bold', color: '#e74c3c' }}> (+{order.aiExtraPrice} грн)</span>
+                                        </p>
+                                    </div>
+                                )}
+
                                 {order.userComments && (
                                     <p style={{ margin: '5px 0', fontSize: '14px', color: '#7f8c8d' }}>
                                         <strong>Ваш коментар:</strong> {order.userComments}

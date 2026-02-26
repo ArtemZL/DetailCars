@@ -16,6 +16,9 @@
         public string Status { get; set; } 
         public DateTime CreatedAt { get; set; }
         public string? UserComments { get; set; }
-        public List<string> ServiceNames { get; set; } 
+        public List<string> ServiceNames { get; set; }
+        public decimal? AiExtraPrice { get; set; } // Щоб показати, скільки додав ШІ
+        public string? AiRecommendedAddon { get; set; } // Назва доданої послуги
+        public string? AiProblemType { get; set; } // Тип проблеми (наприклад, "Пляма")
     }
 }

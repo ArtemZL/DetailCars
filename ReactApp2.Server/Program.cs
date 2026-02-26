@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ReactApp2.Server.Controllers;
 using ReactApp2.Server.Data; 
 using ReactApp2.Server.Models;
 
@@ -17,6 +18,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddIdentityApiEndpoints<User>()
     .AddEntityFrameworkStores<AppDbContext>();
+
+builder.Services.AddHttpClient<GeminiVisionService>();
 
 var app = builder.Build();
 
