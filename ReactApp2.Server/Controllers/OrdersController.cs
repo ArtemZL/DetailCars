@@ -129,7 +129,7 @@ namespace ReactApp2.Server.Controllers
                 .Include(o => o.OrderServices)
                     .ThenInclude(os => os.Service)
                 .Where(o => o.UserId == user.Id)
-                .OrderByDescending(o => o.CreatedAt)
+                .OrderByDescending(o => o.ScheduledStartTime)
                 .Select(o => new OrderResponse
                 {
                     Id = o.Id,
@@ -140,6 +140,7 @@ namespace ReactApp2.Server.Controllers
                     UserComments = o.UserComments,
                     ServiceNames = o.OrderServices.Select(os => os.Service.Name).ToList(),
 
+                    ScheduledStartTime = o.ScheduledStartTime,
                     AiExtraPrice = o.AiExtraPrice,
                     AiRecommendedAddon = o.AiRecommendedAddon,
                     AiProblemType = o.AiProblemType
@@ -214,6 +215,13 @@ namespace ReactApp2.Server.Controllers
                 order.Status == ReactApp2.Server.Enums.OrderStatus.Cancelled)
             {
                 return BadRequest("Це замовлення вже не можна скасувати.");
+            }
+
+            var timeUntilStart = order.ScheduledStartTime - DateTime.UtcNow;
+
+            if (timeUntilStart < TimeSpan.FromHours(1))
+            {
+                return BadRequest("Замовлення можна скасувати не пізніше, ніж за 1 годину до початку.");
             }
 
             order.Status = ReactApp2.Server.Enums.OrderStatus.Cancelled;

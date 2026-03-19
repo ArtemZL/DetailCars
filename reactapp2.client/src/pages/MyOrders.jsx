@@ -49,7 +49,8 @@ function MyOrders() {
             if (response.ok) {
                 fetchOrders(); 
             } else {
-                alert("Не вдалося скасувати замовлення.");
+                const errorText = await response.text();
+                alert(`Увага: ${errorText}`);
             }
         } catch (error) {
             console.error("Помилка з'єднання з сервером.");
@@ -91,7 +92,18 @@ function MyOrders() {
                                 </div>
 
                                 <p style={{ margin: '5px 0' }}><strong>Авто:</strong> {order.carInfo}</p>
-                                <p style={{ margin: '5px 0' }}><strong>Дата:</strong> {new Date(order.createdAt).toLocaleString('uk-UA')}</p>
+                                <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#7f8c8d' }}>
+                                    <strong>📅 Час візиту: </strong>
+                                    <span style={{ color: '#2980b9', fontWeight: 'bold' }}>
+                                        {new Date(order.scheduledStartTime).toLocaleString('uk-UA', {
+                                            day: 'numeric',
+                                            month: 'long',
+                                            year: 'numeric',
+                                            hour: '2-digit',
+                                            minute: '2-digit'
+                                        })}
+                                    </span>
+                                </p>
 
                                 <div style={{ margin: '15px 0', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '5px' }}>
                                     <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>Послуги:</p>

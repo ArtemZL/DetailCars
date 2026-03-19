@@ -21,5 +21,6 @@
         public decimal? AiExtraPrice { get; set; } // Щоб показати, скільки додав ШІ
         public string? AiRecommendedAddon { get; set; } // Назва доданої послуги
         public string? AiProblemType { get; set; } // Тип проблеми (наприклад, "Пляма")
+        public DateTime ScheduledStartTime { get; set; }
     }
 }
