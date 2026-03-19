@@ -196,5 +196,30 @@ namespace ReactApp2.Server.Controllers
 
             return Ok(availableSlots);
         }
+
+        [HttpPut("{id}/cancel")]
+        public async Task<IActionResult> CancelOrder(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            // Шукаємо замовлення, яке належить саме цьому користувачу
+            var order = await _context.Orders
+                .FirstOrDefaultAsync(o => o.Id == id && o.UserId == user.Id);
+
+            if (order == null) return NotFound("Замовлення не знайдено.");
+
+            // Перевіряємо чи можна його скасувати (вже виконане або скасоване не чіпаємо)
+            if (order.Status == ReactApp2.Server.Enums.OrderStatus.Completed ||
+                order.Status == ReactApp2.Server.Enums.OrderStatus.Cancelled)
+            {
+                return BadRequest("Це замовлення вже не можна скасувати.");
+            }
+
+            order.Status = ReactApp2.Server.Enums.OrderStatus.Cancelled;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Замовлення успішно скасовано." });
+        }
     }
 }

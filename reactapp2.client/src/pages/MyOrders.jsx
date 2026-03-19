@@ -1,4 +1,5 @@
-﻿import { useState, useEffect } from 'react';
+﻿/* eslint-disable no-unused-vars */
+import { useState, useEffect } from 'react';
 
 function MyOrders() {
     const [orders, setOrders] = useState([]);
@@ -32,6 +33,26 @@ function MyOrders() {
             setError("Помилка з'єднання з сервером.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCancel = async (orderId) => {
+        if (!window.confirm("Ви впевнені, що хочете скасувати це замовлення?")) return;
+
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`/api/Orders/${orderId}/cancel`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (response.ok) {
+                fetchOrders(); 
+            } else {
+                alert("Не вдалося скасувати замовлення.");
+            }
+        } catch (error) {
+            console.error("Помилка з'єднання з сервером.");
         }
     };
 
@@ -108,6 +129,17 @@ function MyOrders() {
                                 <p style={{ margin: '15px 0 0 0', fontSize: '18px', textAlign: 'right' }}>
                                     <strong>Сума: <span style={{ color: '#27ae60' }}>{order.totalPrice} грн</span></strong>
                                 </p>
+
+                                {order.status === 'Pending' && (
+                                    <div style={{ textAlign: 'right', marginTop: '10px' }}>
+                                        <button
+                                            onClick={() => handleCancel(order.id)}
+                                            style={{ backgroundColor: '#e74c3c', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        >
+                                            ❌ Скасувати запис
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         );
                     })}

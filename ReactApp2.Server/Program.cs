@@ -12,6 +12,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHostedService<ReactApp2.Server.BackgroundServices.OrderStatusUpdaterService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
