@@ -23,9 +23,11 @@ namespace ReactApp2.Server.Models
         public string? AiProblemType { get; set; }
         public int? AiSeverity { get; set; }
         public string? AiRecommendedAddon { get; set; }
-        public decimal AiExtraPrice { get; set; } // Додаткова ціна від ШІ
+        public decimal AiExtraPrice { get; set; } 
         public string? AiManagerExplanation { get; set; }
 
         public List<OrderService> OrderServices { get; set; } = new();
+        public DateTime ScheduledStartTime { get; set; } 
+        public DateTime ScheduledEndTime { get; set; }
     }
 }

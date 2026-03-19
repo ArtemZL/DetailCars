@@ -1,4 +1,5 @@
-﻿/* eslint-disable no-unused-vars */
+﻿/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -10,13 +11,18 @@ function Checkout() {
     const [cars, setCars] = useState([]);
     const [selectedCarId, setSelectedCarId] = useState('');
     const [comments, setComments] = useState('');
-
-    // 👇 СТАН ДЛЯ ФОТО 👇
     const [photoFile, setPhotoFile] = useState(null);
+
+    // 👇 НОВІ СТАНИ ДЛЯ КАЛЕНДАРЯ 👇
+    // Встановлюємо сьогоднішню дату як дату за замовчуванням (формат YYYY-MM-DD)
+    const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
+    const [availableSlots, setAvailableSlots] = useState([]);
+    const [selectedTime, setSelectedTime] = useState('');
+    const [loadingSlots, setLoadingSlots] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false); // Щоб кнопка не натискалась двічі
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         if (!service) {
@@ -25,6 +31,35 @@ function Checkout() {
         }
         fetchMyCars();
     }, [service, navigate]);
+
+    // 👇 НОВИЙ ЕФЕКТ: Завантажує вільні години, коли змінюється дата 👇
+    useEffect(() => {
+        if (!selectedDate || !service) return;
+
+        const fetchAvailableSlots = async () => {
+            setLoadingSlots(true);
+            setSelectedTime(''); // Скидаємо обраний час при зміні дати
+            try {
+                // Якщо у service немає durationMinutes з бекенду, ставимо 60 як резерв
+                const duration = service.durationMinutes || 60;
+                const response = await fetch(`/api/Orders/available-slots?date=${selectedDate}&durationMinutes=${duration}`);
+
+                if (response.ok) {
+                    const slots = await response.json();
+                    setAvailableSlots(slots);
+                } else {
+                    setAvailableSlots([]);
+                }
+            } catch (error) {
+                console.error("Помилка завантаження розкладу");
+                setAvailableSlots([]);
+            } finally {
+                setLoadingSlots(false);
+            }
+        };
+
+        fetchAvailableSlots();
+    }, [selectedDate, service]);
 
     const fetchMyCars = async () => {
         const token = localStorage.getItem('token');
@@ -51,13 +86,18 @@ function Checkout() {
             return;
         }
 
+        // Перевірка, чи обрав клієнт час
+        if (!selectedTime) {
+            setMessage('❌ Будь ласка, оберіть вільний час для запису!');
+            return;
+        }
+
         setIsSubmitting(true);
         setMessage('⏳ Обробка замовлення...');
         const token = localStorage.getItem('token');
         let uploadedPhotoUrl = null;
 
         try {
-            // ЯКЩО Є ФОТО - СПОЧАТКУ ВІДПРАВЛЯЄМО ЙОГО
             if (photoFile) {
                 const formData = new FormData();
                 formData.append('file', photoFile);
@@ -65,12 +105,12 @@ function Checkout() {
                 const uploadRes = await fetch('/api/Upload/image', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
-                    body: formData // Content-Type браузер встановить автоматично для FormData!
+                    body: formData
                 });
 
                 if (uploadRes.ok) {
                     const data = await uploadRes.json();
-                    uploadedPhotoUrl = data.url; // Отримуємо наше посилання (/uploads/...)
+                    uploadedPhotoUrl = data.url;
                 } else {
                     setMessage('❌ Помилка завантаження фотографії.');
                     setIsSubmitting(false);
@@ -78,7 +118,9 @@ function Checkout() {
                 }
             }
 
-            // 2. ВІДПРАВЛЯЄМО САМЕ ЗАМОВЛЕННЯ (з посиланням на фото або без нього)
+            // Збираємо дату та час у правильний формат для DateTime 
+            const scheduledStartTime = `${selectedDate}T${selectedTime}:00`;
+
             const orderResponse = await fetch('/api/Orders', {
                 method: 'POST',
                 headers: {
@@ -89,7 +131,8 @@ function Checkout() {
                     userCarId: parseInt(selectedCarId),
                     serviceIds: [service.id],
                     userComments: comments,
-                    problemPhotoUrl: uploadedPhotoUrl // Передаємо посилання в БД
+                    problemPhotoUrl: uploadedPhotoUrl,
+                    scheduledStartTime: scheduledStartTime // ВІДПРАВЛЯЄМО ЧАС НА БЕКЕНД
                 })
             });
 
@@ -124,10 +167,49 @@ function Checkout() {
                         ))}
                     </select>
 
+                    <div style={{ backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '5px', border: '1px solid #ddd' }}>
+                        <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>📅 Оберіть дату візиту:</label>
+                        <input
+                            type="date"
+                            value={selectedDate}
+                            min={new Date().toLocaleDateString('en-CA')} // Блокуємо минулі дати
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            style={{ padding: '10px', width: '100%', borderRadius: '5px', border: '1px solid #ccc', marginBottom: '15px' }}
+                        />
+
+                        <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>⏰ Доступні години:</label>
+                        {loadingSlots ? (
+                            <p style={{ margin: 0, color: '#7f8c8d' }}>Пошук вільних місць...</p>
+                        ) : availableSlots.length === 0 ? (
+                            <p style={{ margin: 0, color: '#e74c3c' }}>На жаль, на цю дату вільних місць немає.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                                {availableSlots.map(time => (
+                                    <button
+                                        key={time}
+                                        type="button"
+                                        onClick={() => setSelectedTime(time)}
+                                        style={{
+                                            padding: '10px 15px',
+                                            border: `2px solid ${selectedTime === time ? '#27ae60' : '#bdc3c7'}`,
+                                            backgroundColor: selectedTime === time ? '#27ae60' : 'transparent',
+                                            color: selectedTime === time ? 'white' : '#2c3e50',
+                                            borderRadius: '5px',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold',
+                                            transition: '0.2s'
+                                        }}
+                                    >
+                                        {time}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     <label style={{ fontWeight: 'bold' }}>Коментар:</label>
                     <textarea value={comments} onChange={(e) => setComments(e.target.value)} rows="3" style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }} />
 
-                    {/* 👇 ПОЛЕ ДЛЯ ЗАВАНТАЖЕННЯ ФОТО 👇 */}
                     <div style={{ backgroundColor: '#f1f2f6', padding: '15px', borderRadius: '5px', border: '1px dashed #ccc' }}>
                         <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>
                             📸 Фото проблеми (для ШІ-оцінки):
@@ -143,8 +225,16 @@ function Checkout() {
                         </p>
                     </div>
 
-                    <button type="submit" disabled={isSubmitting || cars.length === 0} style={{ backgroundColor: '#27ae60', marginTop: '10px' }}>
-                        {isSubmitting ? 'Обробка...' : 'Підтвердити замовлення'}
+                    <button
+                        type="submit"
+                        disabled={isSubmitting || cars.length === 0 || !selectedTime}
+                        style={{
+                            backgroundColor: (!selectedTime || isSubmitting) ? '#95a5a6' : '#27ae60',
+                            marginTop: '10px',
+                            cursor: (!selectedTime || isSubmitting) ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        {isSubmitting ? 'Обробка...' : (!selectedTime ? 'Оберіть час запису' : 'Підтвердити замовлення')}
                     </button>
                 </form>
 

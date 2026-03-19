@@ -26,12 +26,12 @@ namespace ReactApp2.Server.Data
 
             var services = new Service[]
             {
-                new Service { Name = "Експрес мийка", BasePrice = 150, Description = "Збив бруду, активна піна, змив, сушка" },
-                new Service { Name = "Комплексна мийка", BasePrice = 350, Description = "Мийка кузова + прибирання салону + віск" },
-                new Service { Name = "Хімчистка салону", BasePrice = 2500, Description = "Повна хімчистка сидінь, стелі та підлоги" },
-                new Service { Name = "Полірування кузова", BasePrice = 4000, Description = "Відновлювальне полірування, видалення подряпин" },
-                new Service { Name = "Мийка двигуна", BasePrice = 300, Description = "Делікатна мийка парою" },
-                new Service { Name = "Антидощ", BasePrice = 500, Description = "Покриття скла водовідштовхуючим засобом" }
+                new Service { Name = "Експрес мийка", BasePrice = 150, Description = "Збив бруду, активна піна, змив, сушка", DurationInMinutes = 30},
+                new Service { Name = "Комплексна мийка", BasePrice = 350, Description = "Мийка кузова + прибирання салону + віск", DurationInMinutes = 60},
+                new Service { Name = "Хімчистка салону", BasePrice = 2500, Description = "Повна хімчистка сидінь, стелі та підлоги", DurationInMinutes = 240 },
+                new Service { Name = "Полірування кузова", BasePrice = 4000, Description = "Відновлювальне полірування, видалення подряпин", DurationInMinutes = 300},
+                new Service { Name = "Мийка двигуна", BasePrice = 300, Description = "Делікатна мийка парою", DurationInMinutes = 45},
+                new Service { Name = "Антидощ", BasePrice = 500, Description = "Покриття скла водовідштовхуючим засобом", DurationInMinutes = 30}
             };
 
             context.Services.AddRange(services);

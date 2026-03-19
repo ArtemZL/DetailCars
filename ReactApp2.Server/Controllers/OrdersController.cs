@@ -89,6 +89,11 @@ namespace ReactApp2.Server.Controllers
                 }
             }
 
+            int totalDurationMinutes = services.Sum(s => s.DurationInMinutes);
+
+            int aiExtraTimeMinutes = aiResult?.EstimatedExtraTimeMinutes ?? 0;
+            int finalDuration = totalDurationMinutes + aiExtraTimeMinutes;
+
             var order = new Models.Order
             {
                 UserId = user.Id,
@@ -98,6 +103,8 @@ namespace ReactApp2.Server.Controllers
                 TotalPrice = totalPrice, 
                 OrderServices = orderServices,
 
+                ScheduledStartTime = request.ScheduledStartTime,
+                ScheduledEndTime = request.ScheduledStartTime.AddMinutes(finalDuration),
                 AiProblemType = aiResult?.ProblemType,
                 AiSeverity = aiResult?.Severity,
                 AiRecommendedAddon = aiResult?.RecommendedAddon,
@@ -140,6 +147,54 @@ namespace ReactApp2.Server.Controllers
                 .ToListAsync();
 
             return Ok(orders);
+        }
+
+        [HttpGet("available-slots")]
+        [AllowAnonymous] 
+        public async Task<IActionResult> GetAvailableSlots([FromQuery] string date, [FromQuery] int durationMinutes)
+        {
+            if (!DateTime.TryParse(date, out DateTime selectedDate))
+            {
+                return BadRequest("Неправильний формат дати.");
+            }
+
+            TimeSpan openTime = new TimeSpan(9, 0, 0);  
+            TimeSpan closeTime = new TimeSpan(18, 0, 0); 
+            int stepMinutes = 30; // Крок календаря 
+
+            // 3. Дістаємо всі замовлення на обрану дату
+            // (виключаємо ті, що скасовані, щоб їхній час знову став вільним)
+            var existingOrders = await _context.Orders
+                .Where(o => o.ScheduledStartTime.Date == selectedDate.Date
+                         && o.Status != ReactApp2.Server.Enums.OrderStatus.Cancelled)
+                .Select(o => new { o.ScheduledStartTime, o.ScheduledEndTime })
+                .ToListAsync();
+
+            var availableSlots = new List<string>();
+
+            var currentSlot = selectedDate.Date.Add(openTime);
+            var endOfDay = selectedDate.Date.Add(closeTime);
+
+            // Шукаємо поки кінець нашої послуги не вилізе за час закриття
+            while (currentSlot.AddMinutes(durationMinutes) <= endOfDay)
+            {
+                var proposedEndTime = currentSlot.AddMinutes(durationMinutes);
+
+                // Перевіряємо, чи перетинається наш час із хоча б одним існуючим замовленням.
+                // Перетин є, якщо наш початок раніше за чужий кінець, А наш кінець пізніше за чужий початок.
+                bool isOverlapping = existingOrders.Any(o =>
+                    currentSlot < o.ScheduledEndTime && proposedEndTime > o.ScheduledStartTime);
+
+                // Якщо цей час вільний і він не в минулому (актуально для запису "на сьогодні")
+                if (!isOverlapping && currentSlot > DateTime.Now)
+                {
+                    availableSlots.Add(currentSlot.ToString("HH:mm"));
+                }
+
+                currentSlot = currentSlot.AddMinutes(stepMinutes);
+            }
+
+            return Ok(availableSlots);
         }
     }
 }

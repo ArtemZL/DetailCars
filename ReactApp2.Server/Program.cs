@@ -3,6 +3,8 @@ using ReactApp2.Server.Controllers;
 using ReactApp2.Server.Data; 
 using ReactApp2.Server.Models;
 
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var builder = WebApplication.CreateBuilder(args);
 
 

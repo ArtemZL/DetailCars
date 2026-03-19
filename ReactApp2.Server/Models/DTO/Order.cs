@@ -6,6 +6,7 @@
         public List<int> ServiceIds { get; set; } // Список обраних послуг (зробимо списком на майбутнє, раптом клієнт захоче мийку + хімчистку одразу)
         public string? UserComments { get; set; } // Побажання клієнта
         public string? ProblemPhotoUrl { get; set; }
+        public DateTime ScheduledStartTime { get; set; }
     }
 
     public class OrderResponse
