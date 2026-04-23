@@ -7,6 +7,8 @@
         public string? UserComments { get; set; } // Побажання клієнта
         public string? ProblemPhotoUrl { get; set; }
         public DateTime ScheduledStartTime { get; set; }
+        
+        public string PaymentMethod { get; set; } = "cash"; 
     }
 
     public class OrderResponse
@@ -22,5 +24,7 @@
         public string? AiRecommendedAddon { get; set; } // Назва доданої послуги
         public string? AiProblemType { get; set; } // Тип проблеми (наприклад, "Пляма")
         public DateTime ScheduledStartTime { get; set; }
+        // ДОДАЄМО:
+        public string PaymentMethod { get; set; }
     }
 }

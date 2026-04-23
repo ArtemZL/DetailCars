@@ -102,6 +102,7 @@ namespace ReactApp2.Server.Controllers
                 ProblemPhotoUrl = request.ProblemPhotoUrl,
                 TotalPrice = totalPrice, 
                 OrderServices = orderServices,
+                PaymentMethod = request.PaymentMethod, // ЗБЕРІГАЄМО ТУТ
 
                 ScheduledStartTime = request.ScheduledStartTime,
                 ScheduledEndTime = request.ScheduledStartTime.AddMinutes(finalDuration),
@@ -143,7 +144,8 @@ namespace ReactApp2.Server.Controllers
                     ScheduledStartTime = o.ScheduledStartTime,
                     AiExtraPrice = o.AiExtraPrice,
                     AiRecommendedAddon = o.AiRecommendedAddon,
-                    AiProblemType = o.AiProblemType
+                    AiProblemType = o.AiProblemType,
+                    PaymentMethod = o.PaymentMethod, 
                 })
                 .ToListAsync();
 

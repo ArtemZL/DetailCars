@@ -5,6 +5,7 @@ function MyOrders() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [activeTab, setActiveTab] = useState('active'); // 'active' або 'history'
 
     useEffect(() => {
         fetchOrders();
@@ -25,6 +26,8 @@ function MyOrders() {
 
             if (response.ok) {
                 const data = await response.json();
+                // Сортуємо: найновіші зверху
+                data.sort((a, b) => new Date(b.scheduledStartTime) - new Date(a.scheduledStartTime));
                 setOrders(data);
             } else {
                 setError("Не вдалося завантажити замовлення.");
@@ -61,6 +64,7 @@ function MyOrders() {
     const translateStatus = (status) => {
         switch (status) {
             case 'Pending': return { text: 'В очікуванні ⏳', color: '#f39c12' };
+            case 'Paid': return { text: 'Оплачено 💳', color: '#8e44ad' };     
             case 'InProgress': return { text: 'В роботі ⚙️', color: '#3498db' };
             case 'Completed': return { text: 'Виконано ✅', color: '#27ae60' };
             case 'Cancelled': return { text: 'Скасовано ❌', color: '#e74c3c' };
@@ -71,15 +75,57 @@ function MyOrders() {
     if (loading) return <h2 style={{ color: 'white', textAlign: 'center' }}>Завантаження історії...</h2>;
     if (error) return <h2 style={{ color: '#e74c3c', textAlign: 'center' }}>{error}</h2>;
 
+    // Фільтруємо замовлення залежно від відкритої вкладки
+    const activeStatuses = ['Pending', 'Paid', 'InProgress'];
+    const displayedOrders = orders.filter(o => 
+        activeTab === 'active' 
+            ? activeStatuses.includes(o.status) 
+            : !activeStatuses.includes(o.status)
+    );
+
     return (
         <div className="container">
-            <h1 style={{ color: 'white' }}>📦 Мої замовлення</h1>
+            <h1 style={{ color: 'white', textAlign: 'center' }}>📦 Мої замовлення</h1>
 
-            {orders.length === 0 ? (
-                <p style={{ color: 'white', fontSize: '18px' }}>У вас ще немає замовлень.</p>
+            {/* Вкладки (Tabs) */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '20px' }}>
+                <button 
+                    onClick={() => setActiveTab('active')}
+                    style={{ 
+                        padding: '10px 20px', 
+                        cursor: 'pointer', 
+                        backgroundColor: activeTab === 'active' ? '#3498db' : '#2c3e50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    Активні
+                </button>
+                <button 
+                    onClick={() => setActiveTab('history')}
+                    style={{ 
+                        padding: '10px 20px', 
+                        cursor: 'pointer', 
+                        backgroundColor: activeTab === 'history' ? '#3498db' : '#2c3e50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    Історія
+                </button>
+            </div>
+
+            {displayedOrders.length === 0 ? (
+                <p style={{ color: 'white', fontSize: '18px', textAlign: 'center' }}>
+                    {activeTab === 'active' ? "У вас немає активних замовлень." : "Ваша історія замовлень порожня."}
+                </p>
             ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '600px', margin: '0 auto' }}>
-                    {orders.map(order => {
+                    {displayedOrders.map(order => {
                         const statusInfo = translateStatus(order.status);
 
                         return (
@@ -109,7 +155,7 @@ function MyOrders() {
                                     <p style={{ margin: '0 0 5px 0', fontWeight: 'bold' }}>Послуги:</p>
                                     <ul style={{ margin: 0, paddingLeft: '20px' }}>
                                         {order.serviceNames.map((name, index) => (
-                                            <li key={index}>{name}</li>
+                                            <li key={index} style={{ color: '#2c3e50' }}>{name}</li>
                                         ))}
                                     </ul>
                                 </div>
@@ -119,13 +165,13 @@ function MyOrders() {
                                         <p style={{ margin: '0 0 10px 0', color: '#27ae60', fontWeight: 'bold', fontSize: '16px' }}>
                                             🤖 Рекомендація ШІ після аналізу фото:
                                         </p>
-                                        <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                                        <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
                                             <strong>Знайдена проблема:</strong> {order.aiProblemType === 'Stain' ? 'Пляма' :
                                                 order.aiProblemType === 'Scratch' ? 'Подряпина' :
                                                     order.aiProblemType === 'Dirt' ? 'Сильне забруднення' :
                                                         order.aiProblemType}
                                         </p>
-                                        <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                                        <p style={{ margin: '5px 0', fontSize: '14px', color: '#2c3e50' }}>
                                             <strong>Рекомендована послуга:</strong> {order.aiRecommendedAddon}
                                             <span style={{ fontWeight: 'bold', color: '#e74c3c' }}> (+{order.aiExtraPrice} грн)</span>
                                         </p>
@@ -138,19 +184,23 @@ function MyOrders() {
                                     </p>
                                 )}
 
-                                <p style={{ margin: '15px 0 0 0', fontSize: '18px', textAlign: 'right' }}>
+                                <p style={{ margin: '15px 0 0 0', fontSize: '18px', textAlign: 'right', color: '#2c3e50' }}>
+                                    <strong>Спосіб оплати: <span style={{ color: '#2980b9' }}>
+                                        {order.paymentMethod === 'card' ? 'Сплачено' : '💵 Готівкою'}
+                                    </span></strong>
+                                </p>
+                                <p style={{ margin: '5px 0 0 0', fontSize: '18px', textAlign: 'right', color: '#2c3e50' }}>
                                     <strong>Сума: <span style={{ color: '#27ae60' }}>{order.totalPrice} грн</span></strong>
                                 </p>
 
-                                {order.status === 'Pending' && (
-                                    <div style={{ textAlign: 'right', marginTop: '10px' }}>
-                                        <button
-                                            onClick={() => handleCancel(order.id)}
-                                            style={{ backgroundColor: '#e74c3c', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-                                        >
-                                            ❌ Скасувати запис
-                                        </button>
-                                    </div>
+                                {/* Змінюємо умову, щоб кнопка показувалася і для Pending, і для Paid */}
+                                {(order.status === 'Pending' || order.status === 'Paid') && (
+                                    <button 
+                                        onClick={() => handleCancel(order.id)} 
+                                        style={{ marginTop: '15px', width: '100%', backgroundColor: '#e74c3c', color: 'white', padding: '10px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        Скасувати замовлення
+                                    </button>
                                 )}
                             </div>
                         );

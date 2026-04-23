@@ -1,6 +1,6 @@
 ﻿/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 function Checkout() {
@@ -13,8 +13,6 @@ function Checkout() {
     const [comments, setComments] = useState('');
     const [photoFile, setPhotoFile] = useState(null);
 
-    // 👇 НОВІ СТАНИ ДЛЯ КАЛЕНДАРЯ 👇
-    // Встановлюємо сьогоднішню дату як дату за замовчуванням (формат YYYY-MM-DD)
     const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
     const [availableSlots, setAvailableSlots] = useState([]);
     const [selectedTime, setSelectedTime] = useState('');
@@ -23,6 +21,10 @@ function Checkout() {
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Стан для вибору способу оплати (за замовчуванням - готівка)
+    const [paymentMethod, setPaymentMethod] = useState('cash');
 
     useEffect(() => {
         if (!service) {
@@ -86,7 +88,6 @@ function Checkout() {
             return;
         }
 
-        // Перевірка, чи обрав клієнт час
         if (!selectedTime) {
             setMessage('❌ Будь ласка, оберіть вільний час для запису!');
             return;
@@ -118,9 +119,9 @@ function Checkout() {
                 }
             }
 
-            // Збираємо дату та час у правильний формат для DateTime 
             const scheduledStartTime = `${selectedDate}T${selectedTime}:00`;
 
+            // Відправляємо замовлення на бекенд
             const orderResponse = await fetch('/api/Orders', {
                 method: 'POST',
                 headers: {
@@ -132,20 +133,113 @@ function Checkout() {
                     serviceIds: [service.id],
                     userComments: comments,
                     problemPhotoUrl: uploadedPhotoUrl,
-                    scheduledStartTime: scheduledStartTime // ВІДПРАВЛЯЄМО ЧАС НА БЕКЕНД
+                    scheduledStartTime: scheduledStartTime,
+                    paymentMethod: paymentMethod 
                 })
             });
 
             if (orderResponse.ok) {
-                setMessage('✅ Замовлення успішно оформлено!');
-                setTimeout(() => navigate('/orders'), 2000);
+                const orderData = await orderResponse.json();
+                
+                if (paymentMethod === 'card') {
+                    setMessage('💸 Перехід до оплати...');
+                    const payResponse = await fetch('/api/payments/create-mock-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderData.orderId)
+                    });
+
+                    if (payResponse.ok) {
+                        const payData = await payResponse.json();
+                        navigate(payData.url); 
+                        navigate('/orders');
+                        return;
+                    } else {
+                        setMessage('❌ Помилка ініціалізації оплати.');
+                    }
+                } else {
+                    // Якщо обрана оплата готівкою - редірект на "Мої замовлення"
+                    setMessage('✅ Замовлення успішно оформлено!');
+                    navigate('/orders'); // Миттєвий редірект
+                }
             } else {
                 setMessage('❌ Сталася помилка при оформленні.');
             }
         } catch (error) {
-            setMessage('❌ Помилка з\'єднання з сервером.');
+            setMessage("❌ Помилка з'єднання з сервером.");
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handlePayment = async () => {
+        setIsLoading(true);
+        try {
+            const response = await fetch('/api/payments/create-mock-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(location.state.orderId) // Передаємо ID замовлення (число)
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                // Переходимо на нашу тестову сторінку оплати
+                navigate(data.url);
+            } else {
+                alert("Помилка ініціалізації оплати");
+            }
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleConfirmOrder = async () => {
+        setIsLoading(true);
+        try {
+            // 1. ТУТ МАЄ БУТИ ВАШ КОД СТВОРЕННЯ ЗАМОВЛЕННЯ В БД
+            // Наприклад, ви відправляєте вибрані послуги, час та авто:
+            /*
+            const orderResponse = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    // ...ваші дані замовлення (Id авто, дата, послуги)
+                })
+            });
+            const createdOrder = await orderResponse.json();
+            const orderId = createdOrder.id; // Отримуємо згенерований ID з бази
+            */
+            
+            // Для прикладу використаємо тимчасовий ID (замініть на реальний з бекенду):
+            const orderId = 1; 
+
+            // 2. Логіка в залежності від способу оплати
+            if (paymentMethod === 'card') {
+                // Якщо карта - викликаємо наш Mock шлюз
+                const payResponse = await fetch('/api/payments/create-mock-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderId)
+                });
+
+                if (payResponse.ok) {
+                    const data = await payResponse.json();
+                    navigate(data.url); // Перехід на FakePayment
+                } else {
+                    alert("Помилка ініціалізації оплати.");
+                }
+            } else {
+                // Якщо готівка - просто завершуємо флоу
+                alert("Замовлення успішно підтверджено! Оплата готівкою після послуги.");
+                navigate('/myorders');
+            }
+        } catch (error) {
+            console.error("Помилка підтвердження замовлення", error);
+            alert("Сталася помилка.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -225,10 +319,42 @@ function Checkout() {
                         </p>
                     </div>
 
+                    {/* НОВИЙ БЛОК ОПЛАТИ ВБУДОВАНИЙ У ФОРМУ */}
+                    <div style={{ backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '5px', border: '1px solid #ddd' }}>
+                        <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>
+                            💳 Спосіб оплати:
+                        </label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                                <input 
+                                    type="radio" 
+                                    name="payment" 
+                                    value="cash"
+                                    checked={paymentMethod === 'cash'}
+                                    onChange={() => setPaymentMethod('cash')}
+                                    style={{ margin: 0, width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                                Готівкою (після виконання послуги)
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                                <input 
+                                    type="radio" 
+                                    name="payment" 
+                                    value="card"
+                                    checked={paymentMethod === 'card'}
+                                    onChange={() => setPaymentMethod('card')}
+                                    style={{ margin: 0, width: '18px', height: '18px', cursor: 'pointer' }}
+                                />
+                                Карткою в застосунку (онлайн)
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* ЄДИНА КНОПКА ПІДТВЕРДЖЕННЯ */}
                     <button
                         type="submit"
                         disabled={isSubmitting || cars.length === 0 || !selectedTime}
-                        style={{
+                        styleBrands={{
                             backgroundColor: (!selectedTime || isSubmitting) ? '#95a5a6' : '#27ae60',
                             marginTop: '10px',
                             cursor: (!selectedTime || isSubmitting) ? 'not-allowed' : 'pointer'

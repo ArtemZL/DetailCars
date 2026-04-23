@@ -23,6 +23,11 @@ builder.Services.AddIdentityApiEndpoints<User>()
     .AddEntityFrameworkStores<AppDbContext>();
 
 builder.Services.AddHttpClient<GeminiVisionService>();
+builder.Services.AddHttpClient("Monobank", client =>
+{
+    client.BaseAddress = new Uri("https://api.monobank.ua/");
+    client.DefaultRequestHeaders.Add("X-Token", builder.Configuration["Monobank:XToken"]);
+});
 
 var app = builder.Build();
 

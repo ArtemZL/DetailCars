@@ -6,6 +6,7 @@ import Profile from './pages/Profile';
 import MyCars from './pages/MyCars';
 import Checkout from './pages/Checkout';
 import MyOrders from './pages/MyOrders';
+import FakePayment from './pages/FakePayment';
 import './App.css';
 
 function App() {
@@ -47,6 +48,7 @@ function App() {
                 <Route path="/my-cars" element={<MyCars />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/orders" element={<MyOrders />} />
+                <Route path="/fake-payment" element={<FakePayment />} />
             </Routes>
         </div>
     );

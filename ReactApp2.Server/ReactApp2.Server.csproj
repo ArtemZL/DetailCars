@@ -7,6 +7,7 @@
     <SpaRoot>..\reactapp2.client</SpaRoot>
     <SpaProxyLaunchCommand>npm run dev</SpaProxyLaunchCommand>
     <SpaProxyServerUrl>https://localhost:53151</SpaProxyServerUrl>
+    <UserSecretsId>5e07c13c-641f-4b65-b272-74644d5535dc</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
