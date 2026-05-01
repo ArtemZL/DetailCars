@@ -1,6 +1,7 @@
 ﻿/* eslint-disable no-unused-vars */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+// Додаємо імпорт Link з react-router-dom
+import { useNavigate, Link } from 'react-router-dom';
 
 function Login() {
     const [email, setEmail] = useState('');
@@ -59,6 +60,19 @@ function Login() {
                 />
                 <button type="submit">Увійти</button>
             </form>
+            
+            {/* Додано посилання на відновлення пароля */}
+            <div style={{ marginTop: '15px', textAlign: 'center' }}>
+                <Link to="/forgot-password" style={{ textDecoration: 'none', color: '#007bff' }}>
+                    Забули пароль?
+                </Link>
+            </div>
+
+            {/* Додано посилання на реєстрацію, якщо його ще не було (за бажанням) */}
+            <div style={{ marginTop: '10px', textAlign: 'center', fontSize: '0.9em' }}>
+                Немає акаунту? <Link to="/register" style={{ textDecoration: 'none', color: '#007bff' }}>Зареєструватися</Link>
+            </div>
+
             {message && <p style={{ marginTop: '15px', fontWeight: 'bold' }}>{message}</p>}
         </div>
     );

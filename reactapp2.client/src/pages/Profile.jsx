@@ -13,7 +13,7 @@ function Profile() {
 
     // Стани для зміни пароля
     const [isChangingPass, setIsChangingPass] = useState(false);
-    const [passForm, setPassForm] = useState({ currentPassword: '', newPassword: '' });
+    const [isSendingReset, setIsSendingReset] = useState(false);
     const [passMsg, setPassMsg] = useState('');
 
     useEffect(() => {
@@ -66,7 +66,7 @@ function Profile() {
             if (response.ok) {
                 setProfileMsg('✅ Профіль успішно оновлено!');
                 setIsEditing(false);
-                fetchProfileData(); 
+                fetchProfileData();
             } else {
                 setProfileMsg('❌ Помилка при оновленні.');
             }
@@ -75,32 +75,36 @@ function Profile() {
         }
     };
 
-    // Зміна пароля
-    const handleChangePassword = async (e) => {
-        e.preventDefault();
+    // Надіслати лист для скидання пароля
+    const handleSendPasswordReset = async () => {
+        if (!profile?.email) {
+            setPassMsg('❌ Email не знайдено.');
+            return;
+        }
+
         setPassMsg('');
-        const token = localStorage.getItem('token');
+        setIsSendingReset(true);
 
         try {
-            const response = await fetch('/api/Auth/change-password', {
+            const response = await fetch('/api/Auth/forgot-password', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(passForm)
+                body: JSON.stringify({ email: profile.email })
             });
 
             if (response.ok) {
-                setPassMsg('✅ Пароль успішно змінено!');
+                setPassMsg('✅ Лист для скидання пароля надіслано. Перевірте пошту.');
                 setIsChangingPass(false);
-                setPassForm({ currentPassword: '', newPassword: '' }); 
             } else {
-                const errData = await response.text();
-                setPassMsg(`❌ ${errData || 'Помилка зміни пароля'}`);
+                const data = await response.json().catch(() => null);
+                setPassMsg(`❌ ${data?.message || 'Помилка відправки листа.'}`);
             }
         } catch (err) {
             setPassMsg('❌ Помилка з\'єднання.');
+        } finally {
+            setIsSendingReset(false);
         }
     };
 
@@ -156,15 +160,16 @@ function Profile() {
                         </div>
 
                         {isChangingPass && (
-                            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                <input type="password" placeholder="Поточний пароль" value={passForm.currentPassword} onChange={e => setPassForm({ ...passForm, currentPassword: e.target.value })} required style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
-                                <input type="password" placeholder="Новий пароль" value={passForm.newPassword} onChange={e => setPassForm({ ...passForm, newPassword: e.target.value })} required style={{ padding: '8px', borderRadius: '5px', border: '1px solid #ccc' }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <p style={{ margin: 0 }}>Ми надішлемо лист для скидання пароля на вашу пошту.</p>
 
                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                    <button type="submit" style={{ flex: 1, backgroundColor: '#e74c3c' }}>Оновити пароль</button>
+                                    <button type="button" onClick={handleSendPasswordReset} disabled={isSendingReset} style={{ flex: 1, backgroundColor: '#e74c3c' }}>
+                                        {isSendingReset ? 'Відправка...' : 'Надіслати лист'}
+                                    </button>
                                     <button type="button" onClick={() => setIsChangingPass(false)} style={{ flex: 1, backgroundColor: '#95a5a6' }}>Скасувати</button>
                                 </div>
-                            </form>
+                            </div>
                         )}
                         {passMsg && <p style={{ marginTop: '15px', fontWeight: 'bold', color: passMsg.includes('✅') ? '#27ae60' : '#e74c3c' }}>{passMsg}</p>}
                     </div>

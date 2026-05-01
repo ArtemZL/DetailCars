@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using ReactApp2.Server.Models;
 using ReactApp2.Server.Models.DTO; 
 using Microsoft.AspNetCore.Authorization;
+using ReactApp2.Server.Services;
+using Microsoft.Extensions.Configuration;
 
 namespace ReactApp2.Server.Controllers
 {
@@ -11,10 +13,14 @@ namespace ReactApp2.Server.Controllers
     public class AuthController : ControllerBase
     {
         private readonly UserManager<User> _userManager;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(UserManager<User> userManager)
+        public AuthController(UserManager<User> userManager, IEmailService emailService, IConfiguration configuration)
         {
             _userManager = userManager;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
         [HttpPost("register-client")]
@@ -89,6 +95,46 @@ namespace ReactApp2.Server.Controllers
             if (result.Succeeded) return Ok(new { message = "Пароль успішно змінено!" });
 
             return BadRequest("Неправильний поточний пароль або новий пароль занадто простий.");
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null)
+            {
+                // Повертаємо Ok, щоб запобігти визначенню хакерами, чи існує email в базі
+                return Ok(new { message = "Якщо такий email існує, ми надіслали інструкції." });
+            }
+
+            // Генеруємо токен для скидання
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            
+            var clientBaseUrl = _configuration["ClientApp:BaseUrl"] ?? "https://localhost:53151";
+var resetLink = $"{clientBaseUrl}/reset-password?email={Uri.EscapeDataString(request.Email)}&token={Uri.EscapeDataString(token)}";
+
+            // Відправляємо лист
+            var subject = "Скидання паролю на DetailCars";
+            var body = $"<p>Для скидання паролю перейдіть за <a href='{resetLink}'>цим посиланням</a>.</p>";
+            
+            await _emailService.SendEmailAsync(user.Email, subject, body);
+
+            return Ok(new { message = "Якщо такий email існує, ми надіслали інструкції." });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            var user = await _userManager.FindByEmailAsync(request.Email);
+            if (user == null) return BadRequest("Помилка скидання пароля.");
+
+            var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+            if (result.Succeeded)
+            {
+                return Ok(new { message = "Пароль успішно змінено!" });
+            }
+
+            return BadRequest(result.Errors);
         }
     }
 }

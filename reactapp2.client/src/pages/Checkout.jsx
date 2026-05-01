@@ -134,13 +134,13 @@ function Checkout() {
                     userComments: comments,
                     problemPhotoUrl: uploadedPhotoUrl,
                     scheduledStartTime: scheduledStartTime,
-                    paymentMethod: paymentMethod 
+                    paymentMethod: paymentMethod
                 })
             });
 
             if (orderResponse.ok) {
                 const orderData = await orderResponse.json();
-                
+
                 if (paymentMethod === 'card') {
                     setMessage('💸 Перехід до оплати...');
                     const payResponse = await fetch('/api/payments/create-mock-payment', {
@@ -151,8 +151,8 @@ function Checkout() {
 
                     if (payResponse.ok) {
                         const payData = await payResponse.json();
-                        navigate(payData.url); 
-                        navigate('/orders');
+                        navigate(payData.url);
+                        // Видалено: navigate('/orders');
                         return;
                     } else {
                         setMessage('❌ Помилка ініціалізації оплати.');
@@ -180,7 +180,7 @@ function Checkout() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(location.state.orderId) // Передаємо ID замовлення (число)
             });
-            
+
             if (response.ok) {
                 const data = await response.json();
                 // Переходимо на нашу тестову сторінку оплати
@@ -211,9 +211,9 @@ function Checkout() {
             const createdOrder = await orderResponse.json();
             const orderId = createdOrder.id; // Отримуємо згенерований ID з бази
             */
-            
+
             // Для прикладу використаємо тимчасовий ID (замініть на реальний з бекенду):
-            const orderId = 1; 
+            const orderId = 1;
 
             // 2. Логіка в залежності від способу оплати
             if (paymentMethod === 'card') {
@@ -255,11 +255,20 @@ function Checkout() {
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
 
                     <label style={{ fontWeight: 'bold' }}>Оберіть ваше авто:</label>
-                    <select value={selectedCarId} onChange={(e) => setSelectedCarId(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>
-                        {cars.map(car => (
-                            <option key={car.id} value={car.id}>{car.brand} {car.model}</option>
-                        ))}
-                    </select>
+                    {cars.length === 0 ? (
+                        <div style={{ backgroundColor: '#fff3cd', padding: '12px', borderRadius: '6px', border: '1px solid #ffeeba' }}>
+                            <p style={{ margin: '0 0 10px 0' }}>У вас ще немає доданих авто.</p>
+                            <button type="button" onClick={() => navigate('/my-cars')} style={{ backgroundColor: '#3498db' }}>
+                                ➕ Додати авто
+                            </button>
+                        </div>
+                    ) : (
+                        <select value={selectedCarId} onChange={(e) => setSelectedCarId(e.target.value)} style={{ padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}>
+                            {cars.map(car => (
+                                <option key={car.id} value={car.id}>{car.brand} {car.model}</option>
+                            ))}
+                        </select>
+                    )}
 
                     <div style={{ backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '5px', border: '1px solid #ddd' }}>
                         <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>📅 Оберіть дату візиту:</label>
@@ -326,9 +335,9 @@ function Checkout() {
                         </label>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                                <input 
-                                    type="radio" 
-                                    name="payment" 
+                                <input
+                                    type="radio"
+                                    name="payment"
                                     value="cash"
                                     checked={paymentMethod === 'cash'}
                                     onChange={() => setPaymentMethod('cash')}
@@ -337,9 +346,9 @@ function Checkout() {
                                 Готівкою (після виконання послуги)
                             </label>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                                <input 
-                                    type="radio" 
-                                    name="payment" 
+                                <input
+                                    type="radio"
+                                    name="payment"
                                     value="card"
                                     checked={paymentMethod === 'card'}
                                     onChange={() => setPaymentMethod('card')}

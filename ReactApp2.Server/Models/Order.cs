@@ -32,5 +32,6 @@ namespace ReactApp2.Server.Models
         public List<OrderService> OrderServices { get; set; } = new();
         public DateTime ScheduledStartTime { get; set; } 
         public DateTime ScheduledEndTime { get; set; }
+        public DateTime? ReminderSentAt { get; set; }
     }
 }

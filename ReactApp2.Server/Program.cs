@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ReactApp2.Server.Controllers;
 using ReactApp2.Server.Data; 
 using ReactApp2.Server.Models;
+using ReactApp2.Server.Services;
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -11,8 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.CustomSchemaIds(type => type.FullName?.Replace("+", ".") ?? type.Name);
+});
 builder.Services.AddHostedService<ReactApp2.Server.BackgroundServices.OrderStatusUpdaterService>();
+builder.Services.AddHostedService<ReactApp2.Server.BackgroundServices.OrderReminderService>();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -28,6 +33,10 @@ builder.Services.AddHttpClient("Monobank", client =>
     client.BaseAddress = new Uri("https://api.monobank.ua/");
     client.DefaultRequestHeaders.Add("X-Token", builder.Configuration["Monobank:XToken"]);
 });
+
+builder.Services.AddTransient<IEmailService, EmailService>();
+// Також переконайтеся, щоIdentity налаштовано з вимогою унікального email:
+// options.User.RequireUniqueEmail = true;
 
 var app = builder.Build();
 
